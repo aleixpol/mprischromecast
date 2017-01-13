@@ -9,7 +9,7 @@ import dbus.service
 import dbus.mainloop.glib
 
 class DBusObjectWithProperties(dbus.service.Object):
-    IFACE = ""
+    IFACE = {}
     def __init__(self, bus, path):
         dbus.service.Object.__init__(self, bus, path)
 
@@ -19,7 +19,7 @@ class DBusObjectWithProperties(dbus.service.Object):
             return getattr(self)[property_name]
         else:
             raise dbus.exceptions.DBusException(
-                'com.example.UnknownInterface',
+                DBusObjectWithProperties.IFACE,
                 'The Foo object does not implement the %s interface' % interface_name)
 
     @dbus.service.method("org.freedesktop.DBus.Properties", in_signature='s', out_signature='a{sv}')
@@ -27,16 +27,19 @@ class DBusObjectWithProperties(dbus.service.Object):
         if not interface_name:
             interface_name = self.IFACE
 
-        if interface_name != self.IFACE:
+        if not interface_name in self.IFACE:
+            error = 'The %s object does not implement the %s interface. Only \'%s\'' % (type(self).__name__, interface_name, ", ".join(self.IFACE))
             raise dbus.exceptions.DBusException(
-                'com.example.UnknownInterface',
-                'The Foo object does not implement the %s interface' % interface_name)
+                DBusObjectWithProperties.IFACE,
+                error)
+            return {}
+
         properties = inspect.getmembers(self.__class__, lambda prop: isinstance(prop, property))
         ret = {}
         for (name, value) in properties:
             if name[0].isupper():
                 ret[name] = value.__get__(self)
-        print("trololo", ret)
+        #print("trololo", ret)
         return ret
 
     @dbus.service.method("org.freedesktop.DBus.Properties", in_signature='ssv')
@@ -50,12 +53,14 @@ class DBusObjectWithProperties(dbus.service.Object):
 
 # implements https://specifications.freedesktop.org/mpris-spec/latest/
 class MprisChromecastObject(DBusObjectWithProperties):
-    IFACE = "org.mpris.MediaPlayer2"
+    IFACE = {"org.mpris.MediaPlayer2", "org.mpris.MediaPlayer2.Player"}
 
     def __init__(self, bus, path, device):
         DBusObjectWithProperties.__init__(self, bus, path)
+        print("created device", device.name)
         self.device = device
 
+    # org.mpris.MediaPlayer2
     @dbus.service.method("org.mpris.MediaPlayer2", in_signature='', out_signature='')
     def Raise(self):
         pass
@@ -93,6 +98,99 @@ class MprisChromecastObject(DBusObjectWithProperties):
     def SupportedMimeTypes(self):
         return dbus.Array([], signature='s')
 
+    # org.mpris.MediaPlayer2.Player
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def Next(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def Previous(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def Pause(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def PlayPause(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def Stop(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
+    def Play(self):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='x', out_signature='')
+    def Seek(self, offset):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='ox', out_signature='')
+    def SetPosition(self, trackId, position):
+        pass
+
+    @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='s', out_signature='')
+    def OpenUri(self, uri):
+        pass
+
+    @property
+    def PlaybackStatus(self):
+        return dbus.String("Playing")
+
+    @property
+    def Rate(self):
+        return dbus.Double(1.0)
+
+    @property
+    def MinimumRate(self):
+        return dbus.Double(1.0)
+
+    @property
+    def MaximumRate(self):
+        return dbus.Double(1.0)
+
+    @property
+    def Shuffle(self):
+        return dbus.Boolean(False)
+
+    @property
+    def Metadata(self):
+        return dbus.Dictionary((), signature='sv')
+
+    @property
+    def Volume(self):
+        return dbus.Double(1.0)
+
+    @property
+    def PlaybackStatus(self):
+        return dbus.String("Playing")
+
+    @property
+    def CanGoNext(self):
+        return dbus.Boolean(False)
+
+    @property
+    def CanGoPrevious(self):
+        return dbus.Boolean(False)
+
+    @property
+    def CanPlay(self):
+        return dbus.Boolean(False)
+
+    @property
+    def CanPause(self):
+        return dbus.Boolean(False)
+
+    @property
+    def CanSeek(self):
+        return dbus.Boolean(False)
+
+    @property
+    def CanControl(self):
+        return dbus.Boolean(False)
+
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -101,7 +199,7 @@ if __name__ == '__main__':
     deviceDBusObjects = []
     for (name, cast) in devices.items():
         name = dbus.service.BusName("org.mpris.MediaPlayer2.chromecast-" + name, session_bus)
-        deviceDBusObjects.append(MprisChromecastObject(session_bus, '/org/chromecast/MediaPlayer2', cast))
+        deviceDBusObjects.append(MprisChromecastObject(session_bus, '/org/mpris/MediaPlayer2', cast))
 
     mainloop = gobject.MainLoop()
     mainloop.run()
