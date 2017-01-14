@@ -58,16 +58,16 @@ class DBusObjectWithProperties(dbus.service.Object):
 
     @dbus.service.signal("org.freedesktop.DBus.Properties", signature='sa{sv}as')
     def PropertiesChanged(self, interface_name, changed_properties, invalidated_properties):
-        pass
+        pass # TODO
 
 # implements https://specifications.freedesktop.org/mpris-spec/latest/
 class MprisChromecastObject(DBusObjectWithProperties):
     IFACE = "org.mpris.MediaPlayer2"
 
-    def __init__(self, bus, path, device):
+    def __init__(self, bus, path, cast):
         DBusObjectWithProperties.__init__(self, bus, path)
-        print("created device", device.name)
-        self.device = device
+        print("created device", cast.name)
+        self.cast = cast
 
     # org.mpris.MediaPlayer2
     @dbus.service.method("org.mpris.MediaPlayer2", in_signature='', out_signature='')
@@ -96,8 +96,8 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
     @DBusProperty("org.mpris.MediaPlayer2")
     def Identity(self):
-        #return dbus.String(self.device.uuid)
-        return dbus.String(self.device.name)
+        #return dbus.String(self.cast.uuid)
+        return dbus.String(self.cast.name)
 
     @DBusProperty("org.mpris.MediaPlayer2")
     def SupportedUriSchemes(self):
@@ -114,27 +114,37 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
     def Previous(self):
-        pass
+        mc = self.cast.media_controller
+        mc.plause()
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
     def Pause(self):
-        pass
+        mc = self.cast.media_controller
+        mc.pause()
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
     def PlayPause(self):
-        pass
+        mc = self.cast.media_controller
+        if mc.player_is_playing:
+            mc.pause()
+        else:
+            mc.play()
+
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
     def Stop(self):
-        pass
+        mc = self.cast.media_controller
+        mc.stop()
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='', out_signature='')
     def Play(self):
-        pass
+        mc = self.cast.media_controller
+        mc.play()
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='x', out_signature='')
     def Seek(self, offset):
-        pass
+        mc = self.cast.media_controller
+        mc.seek(offset)
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='ox', out_signature='')
     def SetPosition(self, trackId, position):
@@ -142,12 +152,66 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='s', out_signature='')
     def OpenUri(self, uri):
-        pass
+        mc = self.cast.media_controller
+        mc.play_media(uri)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def PlaybackStatus(self):
+        mc = self.cast.media_controller
+        if mc.player_state == pychromecast.media.MEDIA_PLAYER_STATE_PLAYING:
+            return dbus.String("Playing")
+        elif mc.player_state == pychromecast.media.MEDIA_PLAYER_STATE_PAUSED:
+            return dbus.String("Paused")
+        else:
+            return dbus.String("Stopped")
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def Shuffle(self):
+        console.log("not implemented")
+        return dbus.Boolean(False)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def Metadata(self):
+        return dbus.Dictionary((), signature='sv')
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def Volume(self):
+        return dbus.Double(self.cast.status.volume_level)
 
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def PlaybackStatus(self):
         return dbus.String("Playing")
 
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanGoNext(self):
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.supports_skip_forward)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanGoPrevious(self):
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.supports_skip_backward)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanPlay(self):
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.supports_pause)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanPause(self):
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.supports_pause)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanSeek(self):
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.supports_seek)
+
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
+    def CanControl(self):
+        return dbus.Boolean(False)
+
+#TODO
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def Rate(self):
         return dbus.Double(1.0)
@@ -159,46 +223,6 @@ class MprisChromecastObject(DBusObjectWithProperties):
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def MaximumRate(self):
         return dbus.Double(1.0)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def Shuffle(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def Metadata(self):
-        return dbus.Dictionary((), signature='sv')
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def Volume(self):
-        return dbus.Double(1.0)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def PlaybackStatus(self):
-        return dbus.String("Playing")
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanGoNext(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanGoPrevious(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanPlay(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanPause(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanSeek(self):
-        return dbus.Boolean(False)
-
-    @DBusProperty("org.mpris.MediaPlayer2.Player")
-    def CanControl(self):
-        return dbus.Boolean(False)
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
