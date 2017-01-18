@@ -152,6 +152,11 @@ class MprisChromecastObject(DBusObjectWithProperties):
     def SetPosition(self, trackId, position):
         pass
 
+    @DBusProperty
+    def Position(self):
+        mc = self.cast.media_controller
+        return dbus.Int64(mc.status.current_time)
+
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='s', out_signature='')
     def OpenUri(self, uri):
         mc = self.cast.media_controller
@@ -174,7 +179,7 @@ class MprisChromecastObject(DBusObjectWithProperties):
         mc = self.cast.media_controller
         metadata = {
             "mpris:length": mc.status.duration,
-            "mpris:artUrl": mc.status.images[0] if len(mc.status.images)>0 else "",
+            "mpris:artUrl": mc.status.images[0].url if len(mc.status.images)>0 else "",
 
             "xesam:album": mc.status.album_name,
             "xesam:albumArtist": mc.status.album_artist,
@@ -222,7 +227,8 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def CanControl(self):
-        return dbus.Boolean(False)
+        mc = self.cast.media_controller
+        return dbus.Boolean(mc.status.supports_pause)
 
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def Rate(self):
