@@ -161,7 +161,7 @@ class MprisChromecastObject(DBusObjectWithProperties):
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def Position(self):
         mc = self.cast.media_controller
-        return dbus.Int64(mc.status.current_time)
+        return dbus.Int64(mc.status.current_time * 1000)
 
     @dbus.service.method("org.mpris.MediaPlayer2.Player", in_signature='s', out_signature='')
     def OpenUri(self, uri):
@@ -181,19 +181,22 @@ class MprisChromecastObject(DBusObjectWithProperties):
     @DBusProperty("org.mpris.MediaPlayer2.Player")
     def Metadata(self):
         #see https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/
+        status = self.cast.media_controller.status
 
-        mc = self.cast.media_controller
         metadata = {
-            "mpris:length": dbus.Int64(mc.status.duration),
-            "mpris:artUrl": mc.status.images[0].url if len(mc.status.images)>0 else "",
+            "mpris:artUrl": status.images[0].url if len(status.images)>0 else "",
 
-            "xesam:album": mc.status.album_name,
-            "xesam:albumArtist": mc.status.album_artist,
-            "xesam:artist": mc.status.artist,
-            "xesam:comment": mc.status.series_title,
-            "xesam:trackNumber": mc.status.track,
-            "xesam:title": mc.status.title
+            "xesam:album": status.album_name,
+            "xesam:albumArtist": status.album_artist,
+            "xesam:artist": status.artist,
+            "xesam:comment": status.series_title,
+            "xesam:trackNumber": status.track,
+            "xesam:title": status.title
         }
+
+        if status.duration:
+            metadata["mpris:length"] = dbus.Int64(status.duration * 1000),
+
         return dbus.Dictionary({ a:b for (a,b) in metadata.items() if b }, signature='sv')
 
     @DBusProperty("org.mpris.MediaPlayer2.Player")
