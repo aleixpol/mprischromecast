@@ -23,9 +23,15 @@ class DBusObjectWithProperties(dbus.service.Object):
 
     @dbus.service.method("org.freedesktop.DBus.Properties", in_signature='ss', out_signature='v')
     def Get(self, interface_name, property_name):
-        val = getattr(self)[property_name]
-        if interface_name == val._dbus_property_interface:
-            return val
+        val = getattr(self, property_name)
+        if hasattr(val, "_dbus_property_interface") and interface_name == val._dbus_property_interface:
+            try:
+                return val()
+            except:
+                print("error: requested %s.%s" % (self.IFACE, property_name))
+                raise dbus.exceptions.DBusException(
+                    DBusObjectWithProperties.IFACE,
+                    'The %s object does not implement the %s property' % (type(self).__name__, property_name))
         else:
             raise dbus.exceptions.DBusException(
                 DBusObjectWithProperties.IFACE,
