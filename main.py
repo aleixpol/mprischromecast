@@ -66,6 +66,9 @@ class DBusObjectWithProperties(dbus.service.Object):
         print("PropertiesChanged", interface_name, changed_properties.keys())
         pass # TODO figure out which actually changed
 
+    def emitPropertiesChanged(self, interface_name, changed_properties, invalidated_properties):
+        self.PropertiesChanged(dbus.String(interface_name), dbus.Dictionary(changed_properties, 'sv'), dbus.Array(invalidated_properties, 'as'))
+
 # implements https://specifications.freedesktop.org/mpris-spec/latest/
 class MprisChromecastObject(DBusObjectWithProperties):
     IFACE = "org.mpris.MediaPlayer2"
@@ -84,7 +87,7 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
     def new_media_status(self, newstatus):
         print("statusChanged", newstatus)
-        self.PropertiesChanged("org.mpris.MediaPlayer2.Player", self.GetAll("org.mpris.MediaPlayer2.Player"), [])
+        self.emitPropertiesChanged("org.mpris.MediaPlayer2.Player", self.GetAll("org.mpris.MediaPlayer2.Player"), [])
 
     @DBusProperty("org.mpris.MediaPlayer2")
     def Identity(self):
