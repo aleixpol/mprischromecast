@@ -158,7 +158,7 @@ class MprisChromecastObject(DBusObjectWithProperties):
     def SetPosition(self, trackId, position):
         pass
 
-    @DBusProperty
+    @DBusProperty("org.mpris.MediaPlayer2.Player")
     def Position(self):
         mc = self.cast.media_controller
         return dbus.Int64(mc.status.current_time)
@@ -184,7 +184,7 @@ class MprisChromecastObject(DBusObjectWithProperties):
 
         mc = self.cast.media_controller
         metadata = {
-            "mpris:length": mc.status.duration,
+            "mpris:length": dbus.Int64(mc.status.duration),
             "mpris:artUrl": mc.status.images[0].url if len(mc.status.images)>0 else "",
 
             "xesam:album": mc.status.album_name,
